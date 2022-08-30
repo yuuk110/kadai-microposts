@@ -1,5 +1,5 @@
 @if (count($users) > 0)
-   <ul class="list-unstled">
+   <ul class="list-unstyled">
       @foreach ($users as $user)
          <li class="media">
              {{-- ユーザのメールアドレスをもとにGravatarを取得して表示 --}}
