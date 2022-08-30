@@ -20,6 +20,11 @@
                   {!! Form::email('email', null, ['class' => 'form-control']) !!}
               </div>
               
+               <div class="form-group">
+                    {!! Form::label('password', 'Password') !!}
+                    {!! Form::password('password', ['class' => 'form-control']) !!}
+               </div>
+              
               <div class="form-group">
                   {!! Form::label('password_confirmation', 'Confirmation') !!}
                   {!! Form::password('password_confirmation', ['class' => 'form-control']) !!}
