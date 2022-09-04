@@ -4,88 +4,93 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
-use App\User; // 追加
+use App\User;
+use App\Microposts;
 
 class UsersController extends Controller
 {
-   public function index()
-   {
-    // ユーザ一覧をidの降順で取得
-    $users = User::orderBy('id', 'desc')->paginate(10);
-    
-    // ユーザ一覧ビューでそれを表示
-    return view('users.index', [
-            'users' => $users,
-        ]);
-   }
-   
-   
-   public function show($id)
-   {
-    // idの値でユーザを検索して取得
-    $user = User::findOrFail($id);
-    
-    // 関係するモデルの件数をロード
-    $user->loadRelationshipCounts();
-    
-    // ユーザの投稿一覧を作成日時の降順で取得
-    $microposts = $user->microposts()->orderBy('created_at', 'desc')->paginate(10);
-    
-    // ユーザ詳細ビューでそれを表示
-    return view('users.show', [
-             'user' => $user,
-             'microposts' => $microposts,
-        ]);
+    public function index(){
+        $users = User::orderBy('id','desc')->paginate(10);
+
+        return view('users.index',['users' => $users,]);
     }
-    
-    
-    /**
-     * ユーザのフォロー一覧ページを表示するアクション。
-     *
-     * @param  $id  ユーザのid
-     * @return \Illuminate\Http\Response
-     */
-    public function followings($id)
-    {
-        // idの値でユーザを検索して取得
-        $user = User::findOrFail($id);
 
-        // 関係するモデルの件数をロード
-        $user->loadRelationshipCounts();
+    public function show($id){
+        $user = User::find($id);
+        $microposts = $user->microposts()->orderBy('created_at', 'desc')->paginate(10);
 
-        // ユーザのフォロー一覧を取得
+        $data = [
+            'user' => $user,
+            'microposts' => $microposts,
+        ];
+
+        $data += $this->counts($user);
+
+        return view('users.show', $data);
+    }
+
+    public function edit($id){
+        $user = User::find($id);
+
+        if (\Auth::id() === $user->id) {
+            return view('users.edit', ['user' => $user,]);
+        }
+        // 編集画面に入れなかった場合はトップページへ
+        return redirect('/');
+    }
+
+    public function update(Request $request, $id){
+        $user = User::find($id);
+
+        if (\Auth::id() == $user->id) {
+            $user->name    = $request->name;
+            $user->profile = $request->profile;
+            $user->save();
+        }
+
+            return back();
+    }
+
+    public function followings($id){
+        $user = User::find($id);
         $followings = $user->followings()->paginate(10);
 
-        // フォロー一覧ビューでそれらを表示
-        return view('users.followings', [
+        $data = [
             'user' => $user,
             'users' => $followings,
-        ]);
+            ];
+
+        $data += $this->counts($user);
+
+        return view('users.followings', $data);
     }
 
-    /**
-     * ユーザのフォロワー一覧ページを表示するアクション。
-     *
-     * @param  $id  ユーザのid
-     * @return \Illuminate\Http\Response
-     */
-    public function followers($id)
-    {
-        // idの値でユーザを検索して取得
-        $user = User::findOrFail($id);
-
-        // 関係するモデルの件数をロード
-        $user->loadRelationshipCounts();
-
-        // ユーザのフォロワー一覧を取得
+    public function followers($id){
+        $user = User::find($id);
         $followers = $user->followers()->paginate(10);
 
-        // フォロワー一覧ビューでそれらを表示
-        return view('users.followers', [
+        $data = [
             'user' => $user,
             'users' => $followers,
-        ]);
+        ];
+
+        $data += $this->counts($user);
+
+        return view('users.followers', $data);
     }
+
+    public function favorites($id){
+        $user = User::find($id);
+        $favorites = $user->favorites()->paginate(50);
+
+        $data = [
+            'user' => $user,
+            'microposts' => $favorites,
+            ];
+
+        $data += $this->counts($user);
+
+        return view('users.favorites', $data);
+    }
+
 }
-
-

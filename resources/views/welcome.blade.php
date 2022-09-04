@@ -4,21 +4,26 @@
     @if (Auth::check())
         <div class="row">
             <aside class="col-sm-4">
-                {{-- ユーザ情報 --}}
-                @include('users.card')
+                @include('users.card', ['user' => Auth::user()])
             </aside>
             <div class="col-sm-8">
-                {{-- 投稿フォーム --}}
-                @include('microposts.form')
-                {{-- 投稿一覧 --}}
-                @include('microposts.microposts')
+                @if (Auth::id() == $user->id)
+                    {!! Form::open(['route' => 'microposts.store']) !!}
+                        <div class="form-group">
+                            {!! Form::textarea('content', old('content'), ['class' => 'form-control', 'rows' => '2']) !!}
+                            {!! Form::submit('Post', ['class' => 'btn btn-primary btn-block']) !!}
+                        </div>
+                    {!! Form::close() !!}
+                @endif
+                @if (count($microposts) > 0)
+                    @include('microposts.microposts', ['microposts' => $microposts])
+                @endif
             </div>
         </div>
     @else
         <div class="center jumbotron">
             <div class="text-center">
                 <h1>Welcome to the Microposts</h1>
-                {{-- ユーザ登録ページへのリンク --}}
                 {!! link_to_route('signup.get', 'Sign up now!', [], ['class' => 'btn btn-lg btn-primary']) !!}
             </div>
         </div>

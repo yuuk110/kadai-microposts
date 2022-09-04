@@ -3,40 +3,21 @@
 @section('content')
     <div class="row">
         <aside class="col-sm-4">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">{{ $user->name }}</h3>
-                </div>
-                <div class="card-body">
-                    {{-- ユーザのメールアドレスをもとにGravatarを取得して表示 --}}
-                    <img class="rounded img-fluid" src="{{ Gravatar::get($user->email, ['size' => 500]) }}" alt="">
-                </div>
-            </div>
-            {{-- フォロー／アンフォローボタン --}}
-            @include('user_follow.follow_button')
+            @include('users.card', ['user' => $user])
         </aside>
         <div class="col-sm-8">
-            <ul class="nav nav-tabs nav-justified mb-3">
-                {{-- タブ --}}
-            @include('users.navtabs')
-                {{-- ユーザ詳細タブ --}}
-                <li class="nav-item">
-                    <a href="{{ route('users.show', ['user' => $user->id]) }}" class="nav-link {{ Request::routeIs('users.show') ? 'active' : '' }}">
-                        TimeLine
-                        <span class="badge badge-secondary">{{ $user->microposts_count }}</span>
-                    </a>
-                </li>
-                {{-- フォロー一覧タブ --}}
-                <li class="nav-item"><a href="#" class="nav-link">Followings</a></li>
-                {{-- フォロワー一覧タブ --}}
-                <li class="nav-item"><a href="#" class="nav-link">Followers</a></li>
-            </ul>
+            @include('users.navtabs', ['user' => $user])
             @if (Auth::id() == $user->id)
-                {{-- 投稿フォーム --}}
-                @include('microposts.form')
+                {!! Form::open(['route' => 'microposts.store']) !!}
+                    <div class="form-group">
+                        {!! Form::textarea('content', old('content'), ['class' => 'form-control', 'rows' => '2']) !!}
+                        {!! Form::submit('Post', ['class' => 'btn btn-primary btn-block']) !!}
+                    </div>
+                {!! Form::close() !!}
             @endif
-            {{-- 投稿一覧 --}}
-            @include('microposts.microposts')
+            @if (count($microposts) > 0)
+                @include('microposts.microposts', ['microposts' => $microposts])
+            @endif
         </div>
     </div>
 @endsection

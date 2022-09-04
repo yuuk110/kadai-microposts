@@ -2,141 +2,137 @@
 
 namespace App;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Http\Request;
 
 class User extends Authenticatable
 {
     use Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
-        'name', 'email', 'password',
+        'name', 'email', 'password', 'profile',
     ];
 
-    /**
-     * The attributes that should be hidden for arrays.
-     *
-     * @var array
-     */
     protected $hidden = [
         'password', 'remember_token',
     ];
 
-    /**
-     * The attributes that should be cast to native types.
-     *
-     * @var array
-     */
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-    ];
-    
-    /**
-     * このユーザが所有する投稿。(Micropostモデルとの関係を定義)
-     */
-    public function microposts()
-    {
+    public function microposts(){
+        // user = micropost
         return $this->hasMany(Micropost::class);
     }
-    
-    /**
-     * このユーザに関係するモデルの件数をロードする。
-     */
-    public function loadRelationshipCounts()
-    {
-         $this->loadCount(['microposts', 'followings', 'followers']);
-    }
-    
-    /**
-     * このユーザがフォロー中のユーザ。（ Userモデルとの関係を定義）
-     */
-    public function followings()
-    {
+
+    // userがフォローしているuser
+    // 見に行くモデル名, 見に行くテーブル名, 自分のid, 取得しに行くid
+    public function followings(){
         return $this->belongsToMany(User::class, 'user_follow', 'user_id', 'follow_id')->withTimestamps();
     }
 
-    /**
-     * このユーザをフォロー中のユーザ。（ Userモデルとの関係を定義）
-     */
-    public function followers()
-    {
+    // userがフォローされているuser
+    public function followers(){
         return $this->belongsToMany(User::class, 'user_follow', 'follow_id', 'user_id')->withTimestamps();
+        
     }
-    
-    /**
-     * $userIdで指定されたユーザをフォローする。
-     *
-     * @param  int  $userId
-     * @return bool
-     */
-    public function follow($userId)
-    {
-        // すでにフォローしているか
+
+    // フォローする
+    public function follow($userId){
+        // 既にフォローしているかの確認
         $exist = $this->is_following($userId);
-        // 対象が自分自身かどうか
+
+        // 相手が自分自信でないかの確認
         $its_me = $this->id == $userId;
 
         if ($exist || $its_me) {
-            // フォロー済み、または、自分自身の場合は何もしない
+            // 既にフォローしていれば何もしない
             return false;
         } else {
-            // 上記以外はフォローする
+            // 未フォローであればフォローする
             $this->followings()->attach($userId);
             return true;
         }
     }
 
-    /**
-     * $userIdで指定されたユーザをアンフォローする。
-     *
-     * @param  int  $userId
-     * @return bool
-     */
-    public function unfollow($userId)
-    {
-        // すでにフォローしているか
+    // フォロー外す
+    public function unfollow($userId){
+        // 既にフォローしているかの確認
         $exist = $this->is_following($userId);
-        // 対象が自分自身かどうか
-        $its_me = $this->id == $userId;
 
+        // 相手が自分自身ではないかの確認
+        $its_me = $this->id == $userId;
+    
         if ($exist && !$its_me) {
-            // フォロー済み、かつ、自分自身でない場合はフォローを外す
+            // 既にフォローしていればフォローを外す
             $this->followings()->detach($userId);
             return true;
         } else {
-            // 上記以外の場合は何もしない
+            // 未フォローであれば何もしない
             return false;
         }
     }
 
-    /**
-     * 指定された $userIdのユーザをこのユーザがフォロー中であるか調べる。フォロー中ならtrueを返す。
-     *
-     * @param  int  $userId
-     * @return bool
-     */
-    public function is_following($userId)
-    {
-        // フォロー中ユーザの中に $userIdのものが存在するか
+    public function is_following($userId){
+        // follow_id = userId いたらTRUE いなかったらFALSE
         return $this->followings()->where('follow_id', $userId)->exists();
     }
+
+    public function feed_microposts(){
+        // userがフォローしている人のidを、配列で取得
+        // pluck() → 指定したカラム名だけを抜き出す
+        $follow_user_ids = $this->followings()->pluck('users.id')->toArray();
+
+        // 自分の投稿も表示させたいので、自分のidも配列に追加しておく
+        $follow_user_ids[] = $this->id;
+
+        // Micropostから、follow_user_idsの中にあるユーザーidで全部取得して返す
+        return Micropost::whereIn('user_id', $follow_user_ids);
+    }
+
+    // userがお気に入り登録しているmicropost
+    // 見に行くモデル名, 見に行くテーブル名, 自分のid, 取得しに行くid
+    public function favorites(){
+        return $this->belongsToMany(Micropost::class, 'favorites', 'user_id', 'micropost_id')->withTimestamps();
+    }
+
+    // お気に入り登録する
+    public function favorite($micropostId){
+        // 既にお気に入り登録しているかの確認
+        $exist = $this->is_favorites($micropostId);
+
+        // 相手が自分自信でないかの確認
+        // $its_me = $this->id == $micropostId;
+
+        if ($exist) {
+            // 既にお気に入り登録していれば何もしない
+            return false;
+        } else {
+            // まだお気に入りしていなかったら登録する
+            $this->favorites()->attach($micropostId);
+            return true;
+        }
+    }
+
+    // お気に入り外す
+    public function unfavorite($micropostId){
+        // 既にお気に入り登録しているかの確認
+        $exist = $this->is_favorites($micropostId);
+
+        // 相手が自分自身ではないかの確認
+        // $its_me = $this->id == $userId;
     
-    /**
-     * このユーザとフォロー中ユーザの投稿に絞り込む。
-     */
-    public function feed_microposts()
-    {
-        // このユーザがフォロー中のユーザのidを取得して配列にする
-        $userIds = $this->followings()->pluck('users.id')->toArray();
-        // このユーザのidもその配列に追加
-        $userIds[] = $this->id;
-        // それらのユーザが所有する投稿に絞り込む
-        return Micropost::whereIn('user_id', $userIds);
+        if ($exist) {
+            // 既にお気に入り登録していればお気に入りから外す
+            $this->favorites()->detach($micropostId);
+            return true;
+        } else {
+            // まだお気に入り登録していなければ何もしない
+            return false;
+        }
+    }
+
+    // お気に入り登録している？
+    public function is_favorites($micropostId){
+        // micropost_id = micropostId いたらTRUE いなかったらFALSE
+        return $this->favorites()->where('micropost_id', $micropostId)->exists();
     }
 }

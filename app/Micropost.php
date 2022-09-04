@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Micropost extends Model
 {
-    protected $fillable = ['content'];
+    protected $fillable = ['content', 'user_id'];
     
     /**
      * この投稿を所有するユーザ。(Userモデルとの関係を定義)
@@ -14,5 +14,10 @@ class Micropost extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+    
+     public function favorites_users()
+    {
+        return $this->belongsToMany(User::class, 'favorites', 'micropost_id', 'user_id')->withTimestamps();
     }
 }
